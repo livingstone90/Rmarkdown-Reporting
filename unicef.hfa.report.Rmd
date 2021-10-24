@@ -1,0 +1,770 @@
+---
+title: "UNICEF Newborn Protocol Implementation Pilot Project \n Rapid Health Facilities Assessment (HFA) Report"
+output:
+  html_document:
+    df_print: paged
+params:
+  hospital_name: "hospital name"
+  pdf_document: default
+  word_document: default
+  always_allow_html: true
+fontsize: 11pt
+fonttype: Corbel
+toc: yes
+
+---
+
+```{r, include=FALSE} 
+
+knitr::opts_chunk$set(echo = FALSE,error = FALSE)
+
+pacman::p_load(devtools, data.table, dplyr, forestmangr, ggplot2, lubridate, purrr, officer, here,
+               reshape2, tibble, rvg, RedcapData, stringr, officer, flextable, rmarkdown, kableExtra, formattable)
+
+```
+# -------------------------------------------------------------------------------
+``` {r, include=FALSE}
+
+HFA_data <- fread(file=here::here("report","your data"))
+
+data <- HFA_data %>% filter(hosp_id==params$hospital_name)
+
+#date_of_visit <- data$date
+
+```
+
+
+**County**: `r data$county`
+
+\newline
+\newline
+\newline
+
+**Facility**: `r data$hosp_id`
+
+\newline
+\newline
+\newline
+
+\tableofcontents
+
+\newline
+
+*This Health Facility Readiness Assessment report is based on \n data collected on `r format(as.Date(data$date), '%d %B, %Y')`*
+
+\newline
+
+\newline
+
+\newpage
+
+
+## Table 1: Services offered at the facility, Staffing & Workload
+
+
+``` {r, fig.align='left'}
+
+table1 <- as.data.frame(data %>%
+  dplyr::mutate('Maternal & Child Health (MCH)' = services___1,
+                'Family Planning (FP)' = services___2,
+                'Antenal Care (ANC)' = services___3,
+                'Postnatal Care' = services___4,
+                'Maternity/Delivery Services' = services___5,
+                'HIV Care' = services___6,
+                'Outpatient Services' = services___7,
+                'Inpatient Services' = services___8,
+                'Other Services' = other_services,
+                'Has Labor Ward' = labor_ward)  %>% dplyr::mutate(
+               'No. of Deliveries' = no_deliveries, 
+               'No. of Live Births' = no_livebirths,
+               'No. of Preterm Deliveries' = no_preterms,
+               'No. of LBW Deliveries' = lbw_deliveries,
+               'No. given CHX at birth' = no_chlorhex_digluc) %>% dplyr::mutate(
+              'No. of Medical Officers' = docs,
+              'No. of Clinical Officers' = cos,
+              'No. of Nurses' = nurses,
+              'No. of Nutritionists' = nutritionists) %>% select(
+        'Maternal & Child Health (MCH)',
+        'Family Planning (FP)',
+        'Antenal Care (ANC)',
+        'Postnatal Care',
+        'Maternity/Delivery Services',
+        'HIV Care',
+        'Outpatient Services',
+        'Inpatient Services',
+        'Other Services',
+        'Has Labor Ward',
+        'No. of Deliveries',
+        'No. of Live Births',
+        'No. of Preterm Deliveries',
+        'No. of LBW Deliveries',
+        'No. given CHX at birth',
+        'No. of Medical Officers',
+        'No. of Clinical Officers',
+        'No. of Nurses',
+        'No. of Nutritionists') %>% t())
+
+
+colnames(table1) <- NULL
+colnames(table1) <- c("Offered")
+
+table1 <- tibble::rownames_to_column(table1, "Service")
+
+a <- table1[1:10, ]
+
+b <- table1[11:15, ]
+colnames(b) <- c("Workload", "Count")
+rownames(b) <- c(1:5)
+b_df <- data.frame(matrix(ncol = 2, nrow = 5))
+colnames(b_df) <-  c("Workload", "Count")
+b <- rbind(b, b_df)
+
+c <- table1[16:19, ]
+colnames(c) <- c("Carder", "Number")
+rownames(c) <- c(1:4)
+c_df <- data.frame(matrix(ncol = 2, nrow = 6))
+colnames(c_df) <-  c("Carder", "Number")
+c <- rbind(c, c_df)
+
+
+services <- cbind(a, b, c)
+
+services[is.na(services)] <- ""
+
+services$Number <- as.numeric(as.character(services$Number))
+services$Count <- as.numeric(as.character(services$Count))
+
+#services <- regulartable(services) %>% bold(part = "header") %>% fontsize(part = "header", size = 10) 
+
+#services %>% theme_zebra() %>% width(width = 1) %>% height_all(height = 0.2, part = "all") %>% fontsize(size = 10)
+set_flextable_defaults(big.mark = " ", 
+  font.size = 10, theme_fun = theme_vanilla,
+  padding.bottom = 6, 
+  padding.top = 6,
+  padding.left = 6,
+  padding.right = 6,
+ # background.color = "#EFEFEF",
+  line_spacing = 0.8,
+  table.layout = "autofit",
+  cs.family	= "Corbel")
+
+myft = flextable(services)
+myft = align(myft, i = NULL, j = c(2, 4, 6), align = "center", part = "header")
+
+
+myft = bg(myft, i = ~ Offered  == "Yes",
+            j = 2,
+            bg = "green")
+
+myft = bg(myft, i = ~ Offered  == "No",
+            j = 2,
+            bg = "red")
+
+myft = bg(myft, i = ~ Count <1,
+            j = 4,
+            bg = "red")
+
+myft = bg(myft, i = ~ Number <1,
+            j = 6,
+            bg = "red")
+
+add_footer(myft, values = "Services offered at the facility, Staffing & Workload") 
+ 
+
+# 
+# library(DT)
+# datatable(services, 
+#           options = list(
+#             columnDefs = list(list(className = 'dt-center', targets = c(2,4, 6))))) %>% formatStyle('Offered',
+#   backgroundColor = styleEqual(c("Yes", "No"), c('green', 'red'))) %>% 
+#   formatStyle("Number", backgroundColor = styleEqual(c(0, 1), c('red', 'green')))
+# 
+# pacman::p_load(reactable)
+# 
+# 
+#       ##########################
+#       ### This section changed
+#       ##########################
+#     
+#     # This part allows us to apply specific things to each column
+# reactable(services, columns = list(
+#   Offered = colDef(style = function(Offered) {
+#     if (Offered =="Yes") {
+#       color <- "green"
+#     } else if (Offered == "No") {
+#       color <- "red"
+#     } else {
+#       color <- "#777"
+#     }
+#     list(background = color, fontWeight = "bold")
+#   })))
+
+
+
+```
+
+\newline
+
+## Table 2: Availability of guidelines and job aides
+
+
+```{r, fig.align='left'}
+
+table2 <- as.data.frame(data %>% dplyr::mutate(
+                           'IMNCI' = imnci_available,
+                           'Basic Pediatric Protocols (BPP)' = bpp,
+                           'Newborn Protocols' = newborn_protocols,
+                           'MCH Booklets' = mch_booklet,
+                           'Newborn resuscitation' = newborn_resusci,
+                           'Birth & cord cutting' = birth_cord_cutting,
+                           'Breastfeeding' = breastfeeding,
+                           'Hypoglycaemia' = hypoglycaemia,
+                           'Neonatal seizures' = neo_seizures,
+                           'Assessing PSBI' = assess_psbi,
+                           'Chlorhexidine' = chx,
+                           'Kangaroo Mother Care' = k_mother_care,
+                           'Handwashing' = handwashing,
+                           'Warm Chain' = warm_chain,
+                           'Immediate Newborn Care' = immediate_newb_care,
+                           'Newborn Assessment' = assessment_newborn)  %>% select(
+         'IMNCI',
+         'Basic Pediatric Protocols (BPP)',
+         'Newborn Protocols',
+         'MCH Booklets',
+         'Newborn resuscitation',
+         'Birth & cord cutting',
+         'Breastfeeding',
+         'Hypoglycaemia',
+         'Neonatal seizures',
+         'Assessing PSBI',
+         'Chlorhexidine',
+         'Kangaroo Mother Care',
+         'Handwashing',
+         'Warm Chain',
+         'Immediate Newborn Care',
+         'Newborn Assessment') %>% t())
+
+colnames(table2) <- NULL
+colnames(table2) <- c("Availability")
+
+table2 <- tibble::rownames_to_column(table2, "Guideline | Job Aide")
+
+a <- table2[1:8, ]
+b <- table2[9:16, ]
+
+colnames(b) <- c("Guideline | Job Aide", "Availability")
+rownames(b) <- c(1:8)
+
+guidelines_job_aides <- cbind(a, b)
+
+set_flextable_defaults(big.mark = " ", 
+  font.size = 10, theme_fun = theme_vanilla,
+  padding.bottom = 6, 
+  padding.top = 6,
+  padding.left = 6,
+  padding.right = 6,
+#  background.color = "#EFEFEF",
+  line_spacing = 0.8,
+  table.layout = "autofit",
+  cs.family	= "Corbel")
+
+col_Names <- names(guidelines_job_aides)
+nb_Col_Names <- length(col_Names)
+
+for(i in 1 : nb_Col_Names)
+{
+  col_Names[i] <- paste0(col_Names[i], paste0(rep("\r", i), collapse = ""), collapse = "")
+}
+
+colnames(guidelines_job_aides) <- col_Names
+
+#flextable(guidelines_job_aides)
+
+#colnames(guidelines_job_aides)
+
+# datatable(guidelines_job_aides, 
+#           options = list(
+#             columnDefs = list(list(className = 'dt-center', targets = c(2, 4, 6))))) %>% formatStyle(c("Availability\r\r", "Availability\r\r\r\r"),
+#   backgroundColor = styleEqual(c("Yes", "No"), c('green', 'red')))
+
+myft = flextable(guidelines_job_aides)
+myft = align(myft, i = NULL, j = c(2, 4), align = "center", part = "header")
+
+#colnames(guidelines_job_aides)
+
+myft = bg(myft, i = ~ `Availability\r\r`  == "Yes",
+            j = 2, bg = "green")
+
+myft = bg(myft, i = ~ `Availability\r\r`  == "No",
+            j = 2,  bg = "red")
+
+myft = bg(myft, i = ~ `Availability\r\r\r\r`  == "Yes",
+            j = 4, bg = "green")
+
+myft = bg(myft, i = ~ `Availability\r\r\r\r`  == "No",
+            j = 4,  bg = "red")
+
+add_footer(myft, values = "Availability of guidelines and job aides") 
+
+
+```
+
+\newline
+
+## Table 3: Organization of Neonatal Care
+
+
+```{r, fig.align='left'}
+table3 <- as.data.frame(data  %>% dplyr::mutate(
+                              'Baby unique IP' = unique_id_ip,
+                              'Baby independent medical record/file' = newborns_med_record,
+                              'Where newborns are cared from:' = "",
+                              'Postnatal ward' = where_newborn_cared___1,
+                              'Pediatric ward' = where_newborn_cared___2,
+                              'Separate ward/Nursery/NBU' = where_newborn_cared___3,
+                              'Space within Maternity' = where_newborn_cared___4,
+                              'No. of cots' = no_nbu_cots,
+                              'No. of incubators' = nbu_num_incubators,
+                              'Able to keep babies warm' = all_kept_warm,
+                              'Heat source' = heat_source,
+                              'Ward/Room heat source:' = "",
+                              'Radian warmer' = room_heat_source___1,
+                              'Resuscitaire' = room_heat_source___2,
+                              'Other' = room_heat_source___3,
+                              'Resuscitation checklist available' = checklist_resus_equip,
+                              'Wall clock' = wall_clock,
+                              'KMC practiced' = kmc,
+                              'Immediate S-S initiated after birth' = skin_skin_care,
+                              'Receive referrals' = receive_referrals,
+                              'Weight limit for outborns' = outborn_wt_limit,
+                              'Age limit for outborns' = outborn_age_limit,
+                              'Outborns isolated in ward' = outborn_isolated,
+                              'Weight limit for inborns' = inborn_wt_limit)  %>% 
+                        select(
+                          'Baby unique IP',
+                          'Baby independent medical record/file',
+                          'Where newborns are cared from:',
+                          'Postnatal ward',
+                          'Pediatric ward',
+                          'Separate ward/Nursery/NBU',
+                          'Space within Maternity',
+                          'No. of cots',
+                          'No. of incubators',
+                          'Able to keep babies warm',
+                          'Heat source',
+                          'Ward/Room heat source:',
+                          'Radian warmer',
+                          'Resuscitaire',
+                          'Other',
+                          'Resuscitation checklist available',
+                          'Wall clock',
+                          'KMC practiced',
+                          'Immediate S-S initiated after birth',
+                          'Receive referrals',
+                          'Weight limit for outborns',
+                          'Age limit for outborns',
+                          'Outborns isolated in ward',
+                          'Weight limit for inborns') %>% t())
+
+colnames(table3) <- NULL
+colnames(table3) <- c("Response")
+
+table3 <- tibble::rownames_to_column(table3, "Indicator")
+
+a <- table3[1:12, ]
+b <- table3[13:24, ]
+
+colnames(b) <- c("Indicator", "Response")
+rownames(b) <- c(1:12)
+
+care_organization <- cbind(a, b)
+
+
+set_flextable_defaults(big.mark = " ", 
+  font.size = 10, theme_fun = theme_vanilla,
+  padding.bottom = 6, 
+  padding.top = 6,
+  padding.left = 6,
+  padding.right = 6,
+#  background.color = "#EFEFEF",
+  line_spacing = 0.8,
+  table.layout = "autofit",
+  cs.family	= "Corbel")
+
+col_Names <- names(care_organization)
+nb_Col_Names <- length(col_Names)
+
+for(i in 1 : nb_Col_Names)
+{
+  col_Names[i] <- paste0(col_Names[i], paste0(rep("\r", i), collapse = ""), collapse = "")
+}
+
+colnames(care_organization) <- col_Names
+
+#flextable(care_organization)
+
+# colnames(care_organization)
+# 
+# datatable(care_organization, 
+#           options = list(
+#             columnDefs = list(list(className = 'dt-center', targets = c(2,4))))) %>% formatStyle(c("Response\r\r", "Response\r\r\r\r"),
+#   backgroundColor = styleEqual(c("Yes", "No"), c('green', 'red')))
+
+
+myft = flextable(care_organization)
+myft = align(myft, i = NULL, j = c(2, 4), align = "center", part = "header")
+
+#colnames(guidelines_job_aides)
+
+myft = bg(myft, i = ~ `Response\r\r`  == "Yes",
+            j = 2, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r`  == "No",
+            j = 2,  bg = "red")
+
+myft = bg(myft, i = ~ `Response\r\r` =="0",
+            j = 2,  bg = "red")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "Yes",
+            j = 4, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "No",
+            j = 4,  bg = "red")
+
+add_footer(myft, values = "Organization of Neonatal Care") 
+
+
+```
+
+\newline
+
+## Table 4: Availability of Drugs, fluids and Feeds
+
+
+```{r, fig.align='left'}
+
+table4 <- as.data.frame(data  %>% dplyr::mutate(
+  '1% TEO' = teo_one_perc,
+  '7.1% Chlorhexidine gel' = chx_gel,
+  'Vitamin K' = vit_k,
+  'Benzyl Penicillin' = xpen,
+  'Gentamicin' = genta,
+  'Oral Amoxicillin' = oral_amox,
+  'Phenobarbitone (injection)' = phenobarb_inj,
+  'Adrenaline' = adrenlne,
+  'Phenytoin IV' = phenytoin_iv,
+  'Oral diclofenac' = oral_diclofenac,
+  'Paracetamol' = paracetamol,
+  'Glucose 10%' = glucose_10perc,
+  'Normal saline IV' = normal_saline_iv,
+  'Thermometer (digital/clinical/thermo-gun)' = thermometer,
+  'Wall thermometer' = wall_thermometer,
+  'Infant/Baby weighing scales' = weighing_scale,
+  'Measuring tape' = measuring_tape,
+  'Pulse oximeter' = pulse_oxim,
+  'No. of Pulse Oximeters' = pulse_oxs,
+  'Resuscitaire' = resuscitaire,
+  'No. of Oxygen Cylinders' = ox_cylinders,
+  'Suction devices available' = suc_devices)  %>% 
+    select(
+      '1% TEO',
+      '7.1% Chlorhexidine gel',
+      'Vitamin K',
+      'Benzyl Penicillin',
+      'Gentamicin',
+      'Oral Amoxicillin',
+      'Phenobarbitone (injection)',
+      'Adrenaline',
+      'Phenytoin IV',
+      'Oral diclofenac',
+      'Paracetamol',
+      'Glucose 10%',
+      'Normal saline IV',
+      'Thermometer (digital/clinical/thermo-gun)',
+      'Wall thermometer',
+      'Infant/Baby weighing scales',
+      'Measuring tape',
+      'Pulse oximeter',
+      'No. of Pulse Oximeters',
+      'Resuscitaire',
+      'No. of Oxygen Cylinders',
+      'Suction devices available') %>% t())
+
+
+colnames(table4) <- NULL
+colnames(table4) <- c("Response")
+
+table4 <- tibble::rownames_to_column(table4, "Indicator")
+
+a <- table4[1:11, ]
+b <- table4[12:22, ]
+
+colnames(b) <- c("Indicator", "Response")
+rownames(b) <- c(1:11)
+
+drugs_fluids_equipments <- cbind(a, b)
+
+set_flextable_defaults(big.mark = " ", 
+  font.size = 10, theme_fun = theme_vanilla,
+  padding.bottom = 6, 
+  padding.top = 6,
+  padding.left = 6,
+  padding.right = 6,
+#  background.color = "#EFEFEF",
+  line_spacing = 0.8,
+  table.layout = "autofit",
+  cs.family	= "Corbel")
+
+col_Names <- names(drugs_fluids_equipments)
+nb_Col_Names <- length(col_Names)
+
+for(i in 1 : nb_Col_Names)
+{
+  col_Names[i] <- paste0(col_Names[i], paste0(rep("\r", i), collapse = ""), collapse = "")
+}
+
+colnames(drugs_fluids_equipments) <- col_Names
+
+#flextable(drugs_fluids_equipments)
+
+# colnames(drugs_fluids_equipments)
+# 
+# datatable(drugs_fluids_equipments, 
+#           options = list(
+#             columnDefs = list(list(className = 'dt-center', targets = c(2,4))))) %>% formatStyle(c("Response\r\r", "Response\r\r\r\r"),
+#   backgroundColor = styleEqual(c("Yes", "No"), c('green', 'red')))
+
+myft = flextable(drugs_fluids_equipments)
+myft = align(myft, i = NULL, j = c(2, 4), align = "center", part = "header")
+
+#colnames(guidelines_job_aides)
+
+myft = bg(myft, i = ~ `Response\r\r`  == "Yes",
+            j = 2, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r`  == "No",
+            j = 2,  bg = "red")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "Yes",
+            j = 4, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "No",
+            j = 4,  bg = "red")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r` =="0",
+            j = 4,  bg = "red")
+
+add_footer(myft, values = "Availability of Drugs, fluids and Feeds") 
+
+
+```
+
+\newline
+
+## Table 5: Infection Prevention & Control (IPC) & Personal Protective Equipment (PPEs)
+
+
+```{r, fig.align='left'}
+
+table5 <- as.data.frame(data %>% dplyr::mutate(
+                              'Running water & soap at delivery area' = water_soap,
+                              'Alcohol based sanitizer' = alco_sanitizer,
+                              'Handwashing observed' = ipc_handwashing,
+                              'Examination gloves' = gloves_exam,
+                              'Health worker masks' = masks_hcws,
+                              'Alcohol based hand rub' = alcohol_handrub,
+                              'Bio-hazardous bag' = biohazardous_bag,
+                              'Safety box' = safetybox,
+                              'Soap' = soap,
+                              'Chlorine' = chlorine) %>% select(
+                      'Running water & soap at delivery area',
+                      'Alcohol based sanitizer',
+                      'Handwashing observed',
+                      'Examination gloves',
+                      'Health worker masks',
+                      'Alcohol based hand rub',
+                      'Bio-hazardous bag',
+                      'Safety box',
+                      'Soap',
+                      'Chlorine') %>% t())
+
+
+colnames(table5) <- NULL
+colnames(table5) <- c("Response")
+
+table5 <- tibble::rownames_to_column(table5, "Indicator")
+
+a <- table5[1:5, ]
+b <- table5[6:10, ]
+
+colnames(b) <- c("Indicator", "Response")
+rownames(b) <- c(1:5)
+
+ipc_ppes <- cbind(a, b)
+
+set_flextable_defaults(big.mark = " ", 
+  font.size = 10, theme_fun = theme_vanilla,
+  padding.bottom = 6, 
+  padding.top = 6,
+  padding.left = 6,
+  padding.right = 6,
+#  background.color = "#EFEFEF",
+  line_spacing = 0.8,
+  table.layout = "autofit",
+  cs.family	= "Corbel")
+
+col_Names <- names(ipc_ppes)
+nb_Col_Names <- length(col_Names)
+
+for(i in 1 : nb_Col_Names)
+{
+  col_Names[i] <- paste0(col_Names[i], paste0(rep("\r", i), collapse = ""), collapse = "")
+}
+
+colnames(ipc_ppes) <- col_Names
+
+#flextable(ipc_ppes)
+
+# colnames(ipc_ppes)
+# 
+# datatable(ipc_ppes, 
+#           options = list(
+#             columnDefs = list(list(className = 'dt-center', targets = c(2,4))))) %>% formatStyle(c("Response\r\r", "Response\r\r\r\r"),
+#   backgroundColor = styleEqual(c("Yes", "No"), c('green', 'red')))
+
+
+myft = flextable(ipc_ppes)
+myft = align(myft, i = NULL, j = c(2, 4), align = "center", part = "header")
+
+#colnames(guidelines_job_aides)
+
+myft = bg(myft, i = ~ `Response\r\r`  == "Yes",
+            j = 2, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r`  == "No",
+            j = 2,  bg = "red")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "Yes",
+            j = 4, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "No",
+            j = 4,  bg = "red")
+
+add_footer(myft, values = "Infection Prevention & Control (IPC) & Personal Protective Equipment (PPEs)") 
+
+
+```
+
+\newline
+
+## Table 6: Monitoring & Evaluation (Information Systems) & Referral Systems
+
+```{r, fig.align='left'}
+
+table6 <- as.data.frame(data  %>% dplyr::mutate(
+                                'Receive referrals' = receive_referrals,
+                                'Referral system in place' = referral_sys,
+                                'Referral/transport means:' = "",
+                                'Facility ambulance' = referral_means___1,
+                                'Sub-county ambulance' = referral_means___2,
+                                'Patient own transport' = referral_means___3,
+                                'Other means' = referral_means___4,
+                                'Facility phone' = facility_phone,
+                                'Referral form' = referral_form,
+                                'Community Referral Form (MoH 100)' = moh100_available,
+                                'Maternity register (MOH 333)' = mat_register,
+                                'Inpatient neonatal register (MOH373)' = inpatient_nn_register,
+                                'Under five register (MOH 204A)' = under_five_reg,
+                                'Newborn Admission Record Forms (NAR)' = nar,
+                                'Referral forms' = referral_forms,
+                                'Mother & Child Health Handbook (MOH 216)' = mch_handbook,
+                                'Birth notification forms' = birth_forms,
+                                'Vitals monitoring chart' = vitals_chart) %>% select(
+    'Receive referrals',
+    'Referral system in place',
+    'Referral/transport means:',
+    'Facility ambulance',
+    'Sub-county ambulance',
+    'Patient own transport',
+    'Other means',
+    'Facility phone',
+    'Referral form',
+    'Community Referral Form (MoH 100)',
+    'Maternity register (MOH 333)',
+    'Inpatient neonatal register (MOH373)',
+    'Under five register (MOH 204A)',
+    'Newborn Admission Record Forms (NAR)',
+    'Referral forms' = referral_forms,
+    'Mother & Child Health Handbook (MOH 216)',
+    'Birth notification forms',
+    'Vitals monitoring chart') %>% t())
+
+
+colnames(table6) <- NULL
+colnames(table6) <- c("Response")
+
+table6 <- tibble::rownames_to_column(table6, "Indicator")
+
+a <- table6[1:9, ]
+b <- table6[10:18, ]
+
+colnames(b) <- c("Indicator", "Response")
+rownames(b) <- c(1:9)
+
+referral_m_e <- cbind(a, b)
+
+set_flextable_defaults(big.mark = " ", 
+  font.size = 10, theme_fun = theme_vanilla,
+  padding.bottom = 6, 
+  padding.top = 6,
+  padding.left = 6,
+  padding.right = 6,
+#  background.color = "#EFEFEF",
+  line_spacing = 0.8,
+  table.layout = "autofit",
+  cs.family	= "Corbel")
+
+col_Names <- names(referral_m_e)
+nb_Col_Names <- length(col_Names)
+
+for(i in 1 : nb_Col_Names)
+{
+  col_Names[i] <- paste0(col_Names[i], paste0(rep("\r", i), collapse = ""), collapse = "")
+}
+
+colnames(referral_m_e) <- col_Names
+
+#flextable(referral_m_e)
+
+# colnames(referral_m_e)
+# 
+# datatable(referral_m_e, 
+#           options = list(
+#             columnDefs = list(list(className = 'dt-center', targets = c(2,4))))) %>% formatStyle(c("Response\r\r", "Response\r\r\r\r"),
+#   backgroundColor = styleEqual(c("Yes", "No"), c('green', 'red')))
+
+
+
+myft = flextable(referral_m_e)
+myft = align(myft, i = NULL, j = c(2, 4), align = "center", part = "header")
+
+#colnames(guidelines_job_aides)
+
+myft = bg(myft, i = ~ `Response\r\r`  == "Yes",
+            j = 2, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r`  == "No",
+            j = 2,  bg = "red")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "Yes",
+            j = 4, bg = "green")
+
+myft = bg(myft, i = ~ `Response\r\r\r\r`  == "No",
+            j = 4,  bg = "red")
+
+add_footer(myft, values = "Monitoring & Evaluation (Information Systems) & Referral Systems") 
+
+
+```
+
+
